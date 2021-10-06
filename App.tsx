@@ -63,6 +63,8 @@ export default function App() {
   const responseListener = useRef<Subscription>();
 
   useEffect(() => {
+    setTodaysAndTomorrowsNotifications();
+
     responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {
       setTodaysAndTomorrowsNotifications();
     });
