@@ -24,7 +24,11 @@ copy(Array.from(document.querySelectorAll('.clsMonths')).map(tr => {
     }
     function hours(t) {
         let h = parseInt(t);
-        if (t.includes('PM')) {
+        if (h === 12) {
+            if (t.includes('AM')) {
+                h = 0;
+            }
+        } else if (t.includes('PM')) {
             h += 12;
         }
         return h.toString();
@@ -67,12 +71,9 @@ export default function App() {
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <Text>Fajr: {fajr[0]}:{fajr[1]}</Text>
-        <Text>Sunrise: {sunrise[0]}:{sunrise[1]}</Text>
-        <Text>Zuhr: {zuhr[0]}:{zuhr[1]}</Text>
-        <Text>Asr: {asr[0]}:{asr[1]}</Text>
-        <Text>Magrib: {magrib[0]}:{magrib[1]}</Text>
-        <Text>Isha: {isha[0]}:{isha[1]}</Text>
+        {Object.entries(todays).map(([name, hm], i) => (
+          <Text key={`text${i}`}>{name.replace(/./, c => c.toUpperCase())}: {hm[0]}:{hm[1]}</Text>
+        ))}
       <Button
         title="Press to schedule Namaz notifications"
         onPress={async () => {
