@@ -4,13 +4,14 @@ import React from 'react';
 import { View, Button, Text } from 'react-native';
 
 /*
-Array.from(document.querySelectorAll('.clsMonths')).map(tr => {
+// http://portsmouthcentralmasjid.com/Prayer-Times
+copy(Array.from(document.querySelectorAll('.clsMonths')).map(tr => {
     const tds = tr.querySelectorAll('td');
 
     return {
         fajr: hm(3),
         sunrise: hm(5),
-        zuhr: hm(5),
+        zuhr: hm(6),
         asr: hm(9),
         magrib: hm(11),
         isha: hm(13),
@@ -26,12 +27,16 @@ Array.from(document.querySelectorAll('.clsMonths')).map(tr => {
         if (t.includes('PM')) {
             h += 12;
         }
-        return h;
+        return h.toString();
     }
     function minutes(t) {
-        return parseInt(t.split(':')[1]);
+        let m = parseInt(t.split(':')[1]);
+        if (m < 10) {
+            m = "0" + m;
+        }
+        return m.toString();
     }
-})
+}))
 */
 import times from './times.json';
 
