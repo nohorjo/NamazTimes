@@ -1,7 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { AndroidNotificationPriority } from 'expo-notifications';
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Button, Text } from 'react-native';
+import { Subscription } from '@unimodules/core';
 
 /*
 // http://portsmouthcentralmasjid.com/Prayer-Times
@@ -44,6 +45,8 @@ copy(Array.from(document.querySelectorAll('.clsMonths')).map(tr => {
 */
 import times from './times.json';
 
+const ONE_DAY = 1000 * 60 * 60 * 24;
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -54,15 +57,22 @@ Notifications.setNotificationHandler({
 });
 
 export default function App() {
-  const todays = times[dayOfYear()];
-  const {
-    fajr,
-    sunrise,
-    zuhr,
-    asr,
-    magrib,
-    isha,
-  } = todays;
+  const todays = times[getDayOfYear()];
+
+  const [next, setNext] = useState<[string, Date]>();
+  const responseListener = useRef<Subscription>();
+
+  useEffect(() => {
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {
+      setTodaysAndTomorrowsNotifications();
+    });
+
+    return () => {
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, []);
 
   return (
     <View
@@ -77,22 +87,32 @@ export default function App() {
       <Button
         title="Press to schedule Namaz notifications"
         onPress={async () => {
-          await Notifications.cancelAllScheduledNotificationsAsync();
-          const today = new Date();
-          Object.entries(todays).reverse().forEach(([name, hm]) => {
-            const time = toDate(hm);
-            if (today < time) {
-              schedulePushNotification(name, time);
-            }
-          });
+          await setTodaysAndTomorrowsNotifications();
         }}
       />
     </View>
   );
 }
 
-function schedulePushNotification(name: string, time: Date) {
-  Notifications.scheduleNotificationAsync({
+async function setTodaysAndTomorrowsNotifications(): Promise<void> {
+  const dayOfYear = getDayOfYear();
+  const todays = times[dayOfYear];
+  const tomorrows = times[dayOfYear + 1] || times[0];
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  const today = new Date();
+  await Promise.all(Object.entries(todays).map(async ([name, hm]) => {
+    const time = toDate(hm);
+    if (today < time) {
+      await schedulePushNotification(name, time);
+    }
+  }));
+  await Promise.all(Object.entries(tomorrows).map(async ([name, hm]) => {
+    await schedulePushNotification(name, toDate(hm, new Date(Date.now() + ONE_DAY)));
+  }));
+}
+
+async function schedulePushNotification(name: string, time: Date) {
+  await Notifications.scheduleNotificationAsync({
     content: {
       title: name,
     },
@@ -100,16 +120,15 @@ function schedulePushNotification(name: string, time: Date) {
   });
 }
 
-function dayOfYear(): number {
+function getDayOfYear(): number {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
   const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
-  const oneDay = 1000 * 60 * 60 * 24;
-  return Math.floor(diff / oneDay) - 1;
+  return Math.floor(diff / ONE_DAY) - 1;
 }
 
-function toDate([hours, minutes]: string[]): Date {
-  const date = new Date();
+function toDate([hours, minutes]: string[], date = new Date): Date {
+  date = new Date(date);
   date.setHours(parseInt(hours), parseInt(minutes));
   return date;
 }
