@@ -11,11 +11,15 @@ copy(Array.from(document.querySelectorAll('.clsMonths')).map(tr => {
 
     return {
         fajr: hm(3),
+        "fajr jamat": hm(4),
         sunrise: hm(5),
         zuhr: hm(6),
+        "zuhr jamat": hm(7),
         asr: hm(9),
+        "asr jamat": hm(10),
         magrib: hm(11),
         isha: hm(13),
+        "isha jamat": hm(14),
     };
 
 
@@ -57,9 +61,13 @@ Notifications.setNotificationHandler({
 });
 
 export default function App() {
+  const [now, setNow] = useState(new Date);
   const todays = times[getDayOfYear()];
 
-  const [next, setNext] = useState<[string, Date]>();
+  const nextNamaz = Object.entries(todays)
+                      .map(([n, t]) => ([n, toDate(t)]) as [string, Date])
+                      .filter(([_, t]) => t > now)[0];
+
   const responseListener = useRef<Subscription>();
 
   useEffect(() => {
@@ -69,10 +77,13 @@ export default function App() {
       setTodaysAndTomorrowsNotifications();
     });
 
+    const timer = setInterval(() => setNow(new Date), 1000);
+
     return () => {
       if (responseListener.current) {
         Notifications.removeNotificationSubscription(responseListener.current);
       }
+      clearInterval(timer);
     };
   }, []);
 
@@ -84,7 +95,7 @@ export default function App() {
         justifyContent: 'center',
       }}>
         {Object.entries(todays).map(([name, hm], i) => (
-          <Text key={`text${i}`}>{name.replace(/./, c => c.toUpperCase())}: {hm[0]}:{hm[1]}</Text>
+          <Text key={`text${i}`}>{capitalise(name)}: {hm[0]}:{hm[1]}</Text>
         ))}
       <Button
         title="Press to schedule Namaz notifications"
@@ -92,8 +103,23 @@ export default function App() {
           await setTodaysAndTomorrowsNotifications();
         }}
       />
+      <Text>{capitalise(nextNamaz[0])} in {toHMS(nextNamaz[1].getTime() - now.getTime())}</Text>
     </View>
   );
+}
+
+function capitalise(s: string): string {
+  return s.replace(/./, c => c.toUpperCase());
+}
+
+function toHMS(millis: number): string {
+  const hours = Math.floor(millis / 3600000);
+  millis -= 3600000 * hours;
+  const minutes = Math.floor(millis / 60000);
+  millis -= 60000 * minutes;
+  const seconds = Math.floor(millis / 1000);
+
+  return `${hours}h ${minutes}m ${seconds}s`;
 }
 
 async function setTodaysAndTomorrowsNotifications(): Promise<void> {
@@ -102,13 +128,13 @@ async function setTodaysAndTomorrowsNotifications(): Promise<void> {
   const tomorrows = times[dayOfYear + 1] || times[0];
   await Notifications.cancelAllScheduledNotificationsAsync();
   const today = new Date();
-  await Promise.all(Object.entries(todays).map(async ([name, hm]) => {
+  await Promise.all(Object.entries(todays).filter(([n]) => !n.includes('jamat')).map(async ([name, hm]) => {
     const time = toDate(hm);
     if (today < time) {
       await schedulePushNotification(name, time);
     }
   }));
-  await Promise.all(Object.entries(tomorrows).map(async ([name, hm]) => {
+  await Promise.all(Object.entries(tomorrows).filter(([n]) => !n.includes('jamat')).map(async ([name, hm]) => {
     await schedulePushNotification(name, toDate(hm, new Date(Date.now() + ONE_DAY)));
   }));
 }
@@ -131,6 +157,6 @@ function getDayOfYear(): number {
 
 function toDate([hours, minutes]: string[], date = new Date): Date {
   date = new Date(date);
-  date.setHours(parseInt(hours), parseInt(minutes));
+  date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
   return date;
 }
