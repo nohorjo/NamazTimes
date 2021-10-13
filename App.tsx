@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { AndroidNotificationPriority } from 'expo-notifications';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Button, Text } from 'react-native';
+import { View, Button, Text, ToastAndroid } from 'react-native';
 import { Subscription } from '@unimodules/core';
 
 /*
@@ -138,6 +138,7 @@ async function setTodaysAndTomorrowsNotifications(): Promise<void> {
   await Promise.all(Object.entries(tomorrows).filter(([n]) => !n.includes('jamat')).map(async ([name, hm]) => {
     await schedulePushNotification(name, toDate(hm, new Date(Date.now() + ONE_DAY)));
   }));
+  ToastAndroid.show('Notifications set', ToastAndroid.SHORT);
 }
 
 async function schedulePushNotification(name: string, time: Date) {
