@@ -67,7 +67,7 @@ export default function App() {
   const nextNamaz = Object.entries(todays)
                       .map(([n, t]) => ([n, toDate(t)]) as [string, Date])
                       .filter(([_, t]) => t > now)[0]
-                      || ['fajr', toDate((times[getDayOfYear() + 1] || times[0]).fajr)];
+                      || ['fajr', toDate((times[getDayOfYear() + 1] || times[0]).fajr, new Date(Date.now() + ONE_DAY))];
 
   const responseListener = useRef<Subscription>();
 
