@@ -1,8 +1,10 @@
 import * as Notifications from 'expo-notifications';
 import { AndroidNotificationPriority } from 'expo-notifications';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Button, Text, ToastAndroid } from 'react-native';
+import { View, Button, Text, ToastAndroid, Dimensions } from 'react-native';
 import { Subscription } from '@unimodules/core';
+
+import { WebView } from 'react-native-webview';
 
 /*
 // http://portsmouthcentralmasjid.com/Prayer-Times
@@ -49,6 +51,34 @@ copy(Array.from(document.querySelectorAll('.clsMonths')).map(tr => {
 */
 import times from './times.json';
 
+const SCRIPT = `(${String(function() {
+  const { body, head } = document;
+  const yesterdaysDate = new Date().getDate() - 1;
+  const timeout = setInterval(() => {
+    clearInterval(timeout);
+    //@ts-ignore
+    body.innerHTML = document.getElementById('tbl_PrayerTimes').parentNode.innerHTML;
+    //@ts-ignore
+    body.style.zoom=0.7;
+    head.innerHTML += '<style>#tbl_PrayerTimes th, #tbl_PrayerTimes td {padding: 1px !important;}</style>';
+    document.querySelectorAll('#tbl_PrayerTimes tr').forEach(tr => {
+      const { children } = tr;
+      //@ts-ignore
+      if (+children[0].textContent < yesterdaysDate) {
+        tr.remove();
+      } else {
+        const dayField = children[1];
+        //@ts-ignore
+        dayField.textContent = dayField.textContent.trim().slice(0, 3);
+        children[12].remove();
+        children[8].remove();
+        children[2].remove();
+      }
+    });
+  }, 50);
+})})()`;
+
+const WIDTH = Dimensions.get('window').width;
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
 Notifications.setNotificationHandler({
@@ -62,9 +92,8 @@ Notifications.setNotificationHandler({
 
 export default function App() {
   const [now, setNow] = useState(new Date);
-  const todays = times[getDayOfYear()];
 
-  const nextNamaz = Object.entries(todays)
+  const nextNamaz = Object.entries(times[getDayOfYear()])
                       .map(([n, t]) => ([n, toDate(t)]) as [string, Date])
                       .filter(([_, t]) => t > now)[0]
                       || ['fajr', toDate((times[getDayOfYear() + 1] || times[0]).fajr, new Date(Date.now() + ONE_DAY))];
@@ -94,17 +123,21 @@ export default function App() {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
+        paddingVertical: 5,
       }}>
-        {Object.entries(todays).map(([name, hm], i) => (
-          <Text key={`text${i}`}>{capitalise(name)}: {hm[0]}:{hm[1]}</Text>
-        ))}
+        <Text style={{fontSize: 30, color: '#505d3e'}}>{capitalise(nextNamaz[0])} in {toHMS(nextNamaz[1].getTime() - now.getTime())}</Text>
+        <WebView
+          source={{uri: 'http://portsmouthcentralmasjid.com/Prayer-Times'}}
+          style={{width: WIDTH}}
+          injectedJavaScript={SCRIPT}
+        />
       <Button
         title="Press to schedule Namaz notifications"
         onPress={async () => {
           await setTodaysAndTomorrowsNotifications();
         }}
+        color={'#505d3e'}
       />
-      <Text>{capitalise(nextNamaz[0])} in {toHMS(nextNamaz[1].getTime() - now.getTime())}</Text>
     </View>
   );
 }
@@ -120,7 +153,11 @@ function toHMS(millis: number): string {
   millis -= 60000 * minutes;
   const seconds = Math.floor(millis / 1000);
 
-  return `${hours}h ${minutes}m ${seconds}s`;
+  return `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+}
+
+function pad(n: number): string {
+  return n < 10 ? `0${n}` : n.toString();
 }
 
 async function setTodaysAndTomorrowsNotifications(): Promise<void> {
