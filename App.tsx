@@ -115,13 +115,21 @@ function capitalise(s: string): string {
 }
 
 function toHMS(millis: number): string {
+  let formatString = '';
   const hours = Math.floor(millis / 3600000);
+  if (hours) {
+    formatString += `${pad(hours)}h `;
+  }
   millis -= 3600000 * hours;
   const minutes = Math.floor(millis / 60000);
+  if (formatString || minutes) {
+    formatString += `${pad(minutes)}m `;
+  }
   millis -= 60000 * minutes;
   const seconds = Math.floor(millis / 1000);
+  formatString += `${pad(seconds)}s `;
 
-  return `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+  return formatString;
 }
 
 function pad(n: number): string {

@@ -1,32 +1,36 @@
 module.exports = `(${String(function() {
   const { body, head } = document;
-  const yesterdaysDate = new Date().getDate() - 1;
   const timeout = setInterval(() => {
+    const todaysRow = document.querySelector('.activeCell');
+    const allTimesRows = Array.from(document.querySelectorAll('.clsMonths'));
+
     window.ReactNativeWebView.postMessage(JSON.stringify({
-      todays: rowToTimes(document.querySelector('.activeCell')),
+      todays: rowToTimes(todaysRow),
       tomorrows: rowToTimes(
-        document.querySelector('.activeCell~tr')
-        || document.querySelector('.clsMonths')
+        todaysRow.nextElementSibling
+        || allTimesRows[0]
       ),
     }));
 
-    body.innerHTML = document.getElementById('tbl_PrayerTimes').parentNode.innerHTML;
-    body.style.zoom=0.7;
-    head.innerHTML += '<style>#tbl_PrayerTimes th, #tbl_PrayerTimes td {padding: 1px !important;}</style>';
-    document.querySelectorAll('#tbl_PrayerTimes tr').forEach(tr => {
+    allTimesRows.splice(allTimesRows.indexOf(todaysRow) - 2, 22);
+    allTimesRows.forEach(tr => tr.remove());
+    document.querySelectorAll('#tbl_PrayerTimes tr').forEach((tr, i) => {
+      tr.style.display = 'table-row';
       const { children } = tr;
-      if (+children[0].textContent < yesterdaysDate) {
-        tr.remove();
-      } else {
-        const dayField = children[1];
-        dayField.textContent = dayField.textContent.trim().slice(0, 3);
-        children[12].remove();
-        children[8].remove();
-        children[2].remove();
-      }
+      const dayField = children[1];
+      dayField.textContent = dayField.textContent.trim().slice(0, 3);
+      children[12].remove();
+      children[8].remove();
+      children[2].remove();
     });
+
+    body.innerHTML = document.getElementById('tbl_PrayerTimes').parentNode.innerHTML;
+    body.style.zoom = 0.7;
+    head.innerHTML += '<style>#tbl_PrayerTimes th, #tbl_PrayerTimes td {padding: 1px !important;}</style>';
+
     clearInterval(timeout);
   }, 20);
+
   function rowToTimes(tr) {
     const tds = tr.querySelectorAll('td');
 
