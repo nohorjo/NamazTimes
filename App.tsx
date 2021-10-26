@@ -34,7 +34,7 @@ export default function App() {
     Object.entries(todays)
       .map(([n, t]) => ([n, toDate(t)]) as [string, Date])
       .filter(([_, t]) => t > now)[0]
-    || ['fajr', toDate((tomorrows!).fajr, new Date(Date.now() + ONE_DAY))]
+    || ['fajr', toDate(tomorrows!.fajr, new Date(Date.now() + ONE_DAY))]
   );
 
   const responseListener = useRef<Subscription>();

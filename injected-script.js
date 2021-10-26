@@ -48,7 +48,12 @@ module.exports = `(${String(function() {
     };
   
     function hm(n) {
-      const t = tds[n].textContent;
+      const td = tds[n];
+      if (n === 6 && !td.textContent.trim().startsWith('11')) {
+        // Fix bug (from external) where zuhr is set to AM insead of PM
+        td.textContent = td.textContent.replace('AM', 'PM');
+      }
+      const t = td.textContent;
       return [hours(t), minutes(t)];
     }
     function hours(t) {
