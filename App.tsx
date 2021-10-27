@@ -30,11 +30,11 @@ export default function App() {
   const [tomorrows, setTomorrows] = useState<NamazTimes>();
   const [loaded, setLoaded] = useState(false);
 
-  const nextNamaz = todays && (
+  const nextNamaz = todays && tomorrows && (
     Object.entries(todays)
       .map(([n, t]) => ([n, toDate(t)]) as [string, Date])
       .filter(([_, t]) => t > now)[0]
-    || ['fajr', toDate(tomorrows!.fajr, new Date(Date.now() + ONE_DAY))]
+    || ['fajr', toDate(tomorrows.fajr, new Date(Date.now() + ONE_DAY))]
   );
 
   const responseListener = useRef<Subscription>();
@@ -135,8 +135,14 @@ function toHMS(millis: number): string {
 function pad(n: number): string {
   return n < 10 ? `0${n}` : n.toString();
 }
+let setTodaysAndTomorrowsNotificationsLastRun = 0;
 async function setTodaysAndTomorrowsNotifications(todays?: NamazTimes, tomorrows?: NamazTimes): Promise<void> {
-  if (todays && tomorrows) {
+  if (
+    todays
+    && tomorrows
+    && (Date.now() - setTodaysAndTomorrowsNotificationsLastRun > 200)
+  ) {
+    setTodaysAndTomorrowsNotificationsLastRun = Date.now();
     const dayOfYear = getDayOfYear();
     await Notifications.cancelAllScheduledNotificationsAsync();
     const today = new Date();
