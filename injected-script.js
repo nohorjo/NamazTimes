@@ -20,7 +20,7 @@ module.exports = `(${String(function() {
       const dayField = children[1];
       dayField.textContent = dayField.textContent.trim().slice(0, 3);
       children[12].remove();
-      children[8].remove();
+      children[dayField.textContent === 'Fri' ? 7 : 8].remove();
       children[2].remove();
     });
 
