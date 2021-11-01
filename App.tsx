@@ -29,6 +29,7 @@ export default function App() {
   const [todays, setTodays] = useState<NamazTimes>();
   const [tomorrows, setTomorrows] = useState<NamazTimes>();
   const [loaded, setLoaded] = useState(false);
+  const [notificationsSet, setNotificationsSet] = useState(false);
 
   const nextNamaz = todays && tomorrows && (
     Object.entries(todays)
@@ -42,10 +43,10 @@ export default function App() {
   useEffect(() => {
     reset();
 
-    setTodaysAndTomorrowsNotifications(todays, tomorrows);
+    setTodaysAndTomorrowsNotifications(todays, tomorrows, setNotificationsSet);
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {
-      setTodaysAndTomorrowsNotifications(todays, tomorrows);
+      setTodaysAndTomorrowsNotifications(todays, tomorrows, setNotificationsSet);
     });
 
     const timer = setInterval(() => setNow(new Date), 1000);
@@ -68,6 +69,8 @@ export default function App() {
         setTomorrows(tomorrows);  
       }
     });
+
+    Notifications.getAllScheduledNotificationsAsync().then(n => setNotificationsSet(!!n.length));
   }, []);
 
   return (
@@ -100,11 +103,16 @@ export default function App() {
         }}
       />
       <Button
-        title="Press to schedule Namaz notifications"
+        title={notificationsSet ? 'Cancel notifications' : 'Schedule Namaz notifications'}
         onPress={async () => {
-          await setTodaysAndTomorrowsNotifications(todays, tomorrows);
+          if (notificationsSet) {
+            await Notifications.cancelAllScheduledNotificationsAsync();
+            setNotificationsSet(false);
+          } else {
+            await setTodaysAndTomorrowsNotifications(todays, tomorrows, setNotificationsSet);
+          }
         }}
-        color={'#505d3e'}
+        color={notificationsSet ? '#5d4b3e' : '#505d3e'}
       />
     </View>
   );
@@ -136,7 +144,11 @@ function pad(n: number): string {
   return n < 10 ? `0${n}` : n.toString();
 }
 let setTodaysAndTomorrowsNotificationsLastRun = 0;
-async function setTodaysAndTomorrowsNotifications(todays?: NamazTimes, tomorrows?: NamazTimes): Promise<void> {
+async function setTodaysAndTomorrowsNotifications(
+  todays: NamazTimes | undefined,
+  tomorrows: NamazTimes | undefined,
+  setNotificationSet: React.Dispatch<React.SetStateAction<boolean>>
+): Promise<void> {
   if (
     todays
     && tomorrows
@@ -156,6 +168,7 @@ async function setTodaysAndTomorrowsNotifications(todays?: NamazTimes, tomorrows
       await schedulePushNotification(name, toDate(hm, new Date(Date.now() + ONE_DAY)));
     }));
     ToastAndroid.show('Notifications set', ToastAndroid.SHORT);
+    setNotificationSet(true);
   }
 }
 

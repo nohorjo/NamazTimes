@@ -4,7 +4,8 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "web": "expo start --web",
-    "eject": "expo eject"
+    "eject": "expo eject",
+    "push": "adb uninstall com.namaztimes ; cd android && ./gradlew clean assembleRelease && adb install `find . -name *.apk` && adb shell am start -n com.namaztimes/.MainActivity"
   },
   "dependencies": {
     "expo": "~42.0.1",
