@@ -105,6 +105,7 @@ export default function App() {
           }, 250);
           AsyncStorage.setItem(STORAGE_KEY, e.nativeEvent.data);
         }}
+        onLoadStart={() => setLoaded(false)}
       />
       <Button
         title={notificationsSet ? 'Cancel notifications' : 'Schedule Namaz notifications'}
