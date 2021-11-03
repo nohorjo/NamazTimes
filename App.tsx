@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { AndroidNotificationPriority } from 'expo-notifications';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Button, Text, ToastAndroid, Dimensions } from 'react-native';
+import { View, Button, Text, ToastAndroid, Dimensions, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 import { Subscription } from '@unimodules/core';
@@ -38,6 +38,7 @@ export default function App() {
     || ['fajr', toDate(tomorrows.fajr, new Date(Date.now() + ONE_DAY))]
   );
 
+  const webViewRef = useRef<WebView>(null);
   const responseListener = useRef<Subscription>();
 
   useEffect(() => {
@@ -82,13 +83,16 @@ export default function App() {
         paddingVertical: 5,
       }
     }>
-      {nextNamaz && (
-        <Text style={{fontSize: 30, color: '#505d3e'}}>{capitalise(nextNamaz[0])} in {toHMS(nextNamaz[1].getTime() - now.getTime())}</Text>
-      )}
+      <TouchableOpacity onPress={() => webViewRef.current?.reload()}>
+        {nextNamaz && (
+          <Text style={{fontSize: 30, color: '#505d3e'}}>{capitalise(nextNamaz[0])} in {toHMS(nextNamaz[1].getTime() - now.getTime())}</Text>
+        )}
+      </TouchableOpacity>
       {loaded || todays && Object.entries(todays).map(([name, hm], i) => (                   
         <Text key={`text${i}`}>{capitalise(name)}: {hm[0]}:{hm[1]}</Text>
       ))}                                                                
       <WebView
+        ref={webViewRef}
         source={{uri: 'http://portsmouthcentralmasjid.com/Prayer-Times'}}
         style={{width: loaded ? WIDTH : 0}}
         injectedJavaScript={SCRIPT}
