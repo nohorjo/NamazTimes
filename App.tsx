@@ -8,12 +8,12 @@ import { WebView } from 'react-native-webview';
 import { Subscription } from '@unimodules/core';
 
 import SCRIPT from './injected-script';
+import { capitalise, HourMinuteStrings, ONE_DAY, toDate, toHMS } from './utils';
 
 const WIDTH = Dimensions.get('window').width;
-const ONE_DAY = 1000 * 60 * 60 * 24;
 const STORAGE_KEY = '@namaztimes:todaytomorrow';
 
-type NamazTimes = {[key: string]: [string, string]};
+type NamazTimes = {[key: string]: HourMinuteStrings};
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -65,7 +65,7 @@ export default function App() {
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then(data => {
       if (data) {
-        const {todays, tomorrows} = JSON.parse(data);
+        const { todays, tomorrows } = JSON.parse(data);
         setTodays(todays);
         setTomorrows(tomorrows);  
       }
@@ -123,57 +123,37 @@ export default function App() {
   );
 }
 
-function capitalise(s: string): string {
-  return s.replace(/./, c => c.toUpperCase());
-}
-
-function toHMS(millis: number): string {
-  let formatString = '';
-  const hours = Math.floor(millis / 3600000);
-  if (hours) {
-    formatString += `${pad(hours)}h `;
-  }
-  millis -= 3600000 * hours;
-  const minutes = Math.floor(millis / 60000);
-  if (formatString || minutes) {
-    formatString += `${pad(minutes)}m `;
-  }
-  millis -= 60000 * minutes;
-  const seconds = Math.floor(millis / 1000);
-  formatString += `${pad(seconds)}s `;
-
-  return formatString;
-}
-
-function pad(n: number): string {
-  return n < 10 ? `0${n}` : n.toString();
-}
 let setTodaysAndTomorrowsNotificationsLastRun = 0;
 async function setTodaysAndTomorrowsNotifications(
   todays: NamazTimes | undefined,
   tomorrows: NamazTimes | undefined,
   setNotificationSet: React.Dispatch<React.SetStateAction<boolean>>
 ): Promise<void> {
+  const now = Date.now();
   if (
     todays
     && tomorrows
-    && (Date.now() - setTodaysAndTomorrowsNotificationsLastRun > 200)
+    && (now - setTodaysAndTomorrowsNotificationsLastRun > 200)
   ) {
-    setTodaysAndTomorrowsNotificationsLastRun = Date.now();
-    const dayOfYear = getDayOfYear();
+    setTodaysAndTomorrowsNotificationsLastRun = now;
     await Notifications.cancelAllScheduledNotificationsAsync();
     const today = new Date();
-    await Promise.all(Object.entries(todays).filter(([n]) => !n.includes('jamat')).map(async ([name, hm]) => {
+    await processFilteredEntries(todays, async ([name, hm]) => {
       const time = toDate(hm);
       if (today < time) {
         await schedulePushNotification(name, time);
       }
-    }));
-    await Promise.all(Object.entries(tomorrows).filter(([n]) => !n.includes('jamat')).map(async ([name, hm]) => {
-      await schedulePushNotification(name, toDate(hm, new Date(Date.now() + ONE_DAY)));
-    }));
+    });
+    await processFilteredEntries(tomorrows, ([name, hm]) => schedulePushNotification(name, toDate(hm, new Date(Date.now() + ONE_DAY))));
     ToastAndroid.show('Notifications set', ToastAndroid.SHORT);
     setNotificationSet(true);
+  }
+
+  function processFilteredEntries(
+    entries: NamazTimes,
+    callback: (arg: [string, HourMinuteStrings]) => Promise<void>
+  ) {
+    return Promise.all(Object.entries(entries).filter(([n]) => !n.includes('jamat')).map(callback));
   }
 }
 
@@ -184,17 +164,4 @@ async function schedulePushNotification(name: string, time: Date) {
     },
     trigger: time,
   });
-}
-
-function getDayOfYear(): number {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
-  const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
-  return Math.floor(diff / ONE_DAY) - 1;
-}
-
-function toDate([hours, minutes]: string[], date = new Date): Date {
-  date = new Date(date);
-  date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-  return date;
 }
