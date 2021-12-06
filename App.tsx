@@ -30,6 +30,7 @@ export default function App() {
   const [tomorrows, setTomorrows] = useState<NamazTimes>();
   const [loaded, setLoaded] = useState(false);
   const [notificationsSet, setNotificationsSet] = useState(false);
+  const [showWebView, setShowWebView] = useState(true);
 
   const nextNamaz = todays && tomorrows && (
     Object.entries(todays)
@@ -38,7 +39,6 @@ export default function App() {
     || ['fajr', toDate(tomorrows.fajr, new Date(Date.now() + ONE_DAY))]
   );
 
-  const webViewRef = useRef<WebView>(null);
   const responseListener = useRef<Subscription>();
 
   useEffect(() => {
@@ -83,7 +83,11 @@ export default function App() {
         paddingVertical: 5,
       }
     }>
-      <TouchableOpacity onPress={() => webViewRef.current?.reload()}>
+      <TouchableOpacity onPress={() => {
+        setShowWebView(false);
+        setLoaded(false);
+        setTimeout(setShowWebView, 300, true);
+      }}>
         {nextNamaz && (
           <Text style={{fontSize: 30, color: '#505d3e'}}>{capitalise(nextNamaz[0])} in {toHMS(nextNamaz[1].getTime() - now.getTime())}</Text>
         )}
@@ -91,22 +95,23 @@ export default function App() {
       {loaded || todays && Object.entries(todays).map(([name, hm], i) => (                   
         <Text key={`text${i}`}>{capitalise(name)}: {hm[0]}:{hm[1]}</Text>
       ))}                                                                
-      <WebView
-        ref={webViewRef}
-        source={{uri: 'http://portsmouthcentralmasjid.com/Prayer-Times'}}
-        style={{width: loaded ? WIDTH : 0}}
-        injectedJavaScript={SCRIPT}
-        onMessage={e => {
-          const {todays, tomorrows} = JSON.parse(e.nativeEvent.data);
-          setTimeout(() => {
-            setTodays(todays);
-            setTomorrows(tomorrows);
-            setLoaded(true);
-          }, 250);
-          AsyncStorage.setItem(STORAGE_KEY, e.nativeEvent.data);
-        }}
-        onLoadStart={() => setLoaded(false)}
-      />
+      {showWebView && (
+        <WebView
+          source={{uri: 'http://portsmouthcentralmasjid.com/Prayer-Times'}}
+          style={{width: loaded ? WIDTH : 0}}
+          injectedJavaScript={SCRIPT}
+          onMessage={e => {
+            const {todays, tomorrows} = JSON.parse(e.nativeEvent.data);
+            setTimeout(() => {
+              setTodays(todays);
+              setTomorrows(tomorrows);
+              setLoaded(true);
+            }, 250);
+            AsyncStorage.setItem(STORAGE_KEY, e.nativeEvent.data);
+          }}
+          onLoadStart={() => setLoaded(false)}
+        />
+      )}
       <Button
         title={notificationsSet ? 'Cancel notifications' : 'Schedule Namaz notifications'}
         onPress={async () => {
