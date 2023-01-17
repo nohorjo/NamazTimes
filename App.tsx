@@ -97,7 +97,7 @@ export default function App() {
       ))}                                                                
       {showWebView && (
         <WebView
-          source={{uri: 'http://portsmouthcentralmasjid.com/Prayer-Times'}}
+          source={{uri: 'http://neic.org.s3-website-eu-west-1.amazonaws.com'}}
           style={{width: loaded ? WIDTH : 0}}
           injectedJavaScript={SCRIPT}
           onMessage={e => {
