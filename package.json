@@ -1,11 +1,11 @@
 {
   "scripts": {
-    "start": "react-native start",
+    "start": "react-native --openssl-legacy-provider start",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "web": "expo start --web",
     "eject": "expo eject",
-    "push": "adb uninstall com.namaztimes ; cd android && ./gradlew clean assembleRelease && adb install `find . -name *.apk` && adb shell am start -n com.namaztimes/.MainActivity"
+    "push": "adb uninstall com.namaztimes ; cd android && NODE_OPTIONS=--openssl-legacy-provider ./gradlew clean assembleRelease && adb install `find . -name *.apk` && adb shell am start -n com.namaztimes/.MainActivity"
   },
   "dependencies": {
     "expo": "~42.0.1",
