@@ -4,7 +4,7 @@ module.exports = `(${String(function() {
     const todaysRow = document.querySelector('.activeCell');
     const allTimesRows = Array.from(document.querySelectorAll('.clsMonths'));
 
-    window.ReactNativeWebView.postMessage(JSON.stringify({
+    window.ReactNativeWebView?.postMessage(JSON.stringify({
       todays: rowToTimes(todaysRow),
       tomorrows: rowToTimes(
         todaysRow.nextElementSibling
