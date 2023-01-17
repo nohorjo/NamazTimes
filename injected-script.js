@@ -1,8 +1,6 @@
 module.exports = `(${String(function() {
   const { body, head } = document;
   const timeout = setInterval(() => {
-    document.body.innerHTML = document.querySelector('body>table').outerHTML;
-
     const todays = {
       fajr: hm('fajrBegins'),
       "fajr jamat": hm('fajrJamah'),
@@ -22,7 +20,7 @@ module.exports = `(${String(function() {
     }));
 
     clearInterval(timeout);
-  }, 20);
+  }, 100);
 
   function hm(id) {
     const t = document.getElementById(id).textContent;
@@ -31,6 +29,9 @@ module.exports = `(${String(function() {
 
     function hours(t) {
       let h = parseInt(t);
+      if (isNaN(h)) {
+        throw new Error('Invalid number');
+      }
       if (h === 12) {
         if (t.includes('AM')) {
           h = 0;
@@ -42,6 +43,9 @@ module.exports = `(${String(function() {
     }
     function minutes(t) {
       let m = parseInt(t.split(':')[1]);
+      if (isNaN(m)) {
+        throw new Error('Invalid number');
+      }
       if (m < 10) {
         m = "0" + m;
       }
