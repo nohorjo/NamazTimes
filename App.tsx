@@ -2,18 +2,22 @@ import * as Notifications from 'expo-notifications';
 import { AndroidNotificationPriority } from 'expo-notifications';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Button, Text, ToastAndroid, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Button, Text, ToastAndroid, Dimensions, TouchableOpacity, Picker } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 import { Subscription } from '@unimodules/core';
 
-import SCRIPT from './injected-script';
+import script_northend from './injected-script-northend';
+import script_central from './injected-script-central';
+
 import { capitalise, HourMinuteStrings, ONE_DAY, toDate, toHMS } from './utils';
 
 const WIDTH = Dimensions.get('window').width;
 const STORAGE_KEY = '@namaztimes:todaytomorrow';
 
 type NamazTimes = {[key: string]: HourMinuteStrings};
+const masjids = ['central', 'northend'] as const;
+type Masjid = typeof masjids[number];
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -31,6 +35,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [notificationsSet, setNotificationsSet] = useState(false);
   const [showWebView, setShowWebView] = useState(true);
+  const [masjid, setMasjid] = useState<Masjid>('northend');
 
   const nextNamaz = todays && tomorrows && (
     Object.entries(todays)
@@ -70,9 +75,26 @@ export default function App() {
         setTomorrows(tomorrows);  
       }
     });
+    AsyncStorage.getItem(STORAGE_KEY+':masjid').then(data => setMasjid(data as Masjid));
 
     Notifications.getAllScheduledNotificationsAsync().then(n => setNotificationsSet(!!n.length));
   }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(STORAGE_KEY+':masjid', masjid);
+  }, [masjid]);
+
+  let webviewURI, script;
+  switch (masjid) {
+    case 'central':
+      webviewURI = 'http://portsmouthcentralmasjid.com/Prayer-Times';
+      script = script_central;
+      break;
+    case 'northend':
+      webviewURI = 'http://neic.org.s3-website-eu-west-1.amazonaws.com';
+      script = script_northend;
+      break;
+  }
 
   return (
     <View
@@ -97,9 +119,9 @@ export default function App() {
       ))}                                                                
       {showWebView && (
         <WebView
-          source={{uri: 'http://neic.org.s3-website-eu-west-1.amazonaws.com'}}
+          source={{uri: webviewURI}}
           style={{width: loaded ? WIDTH : 0}}
-          injectedJavaScript={SCRIPT}
+          injectedJavaScript={script}
           onMessage={e => {
             const {todays, tomorrows} = JSON.parse(e.nativeEvent.data);
             setTimeout(() => {
@@ -112,18 +134,34 @@ export default function App() {
           onLoadStart={() => setLoaded(false)}
         />
       )}
-      <Button
-        title={notificationsSet ? 'Cancel notifications' : 'Schedule Namaz notifications'}
-        onPress={async () => {
-          if (notificationsSet) {
-            await Notifications.cancelAllScheduledNotificationsAsync();
-            setNotificationsSet(false);
-          } else {
-            await setTodaysAndTomorrowsNotifications(todays, tomorrows, setNotificationsSet);
-          }
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-evenly'
         }}
-        color={notificationsSet ? '#5d4b3e' : '#505d3e'}
-      />
+      >
+        <Picker
+          selectedValue={masjid}
+          style={{width: 140}}
+          onValueChange={itemValue => setMasjid(itemValue)}
+        >
+          {masjids.map(m => (
+            <Picker.Item label={m} value={m} />
+          ))}
+        </Picker>
+        <Button
+          title={notificationsSet ? 'Cancel notifications' : 'Schedule notifications'}
+          onPress={async () => {
+            if (notificationsSet) {
+              await Notifications.cancelAllScheduledNotificationsAsync();
+              setNotificationsSet(false);
+            } else {
+              await setTodaysAndTomorrowsNotifications(todays, tomorrows, setNotificationsSet);
+            }
+          }}
+          color={notificationsSet ? '#5d4b3e' : '#505d3e'}
+        />
+      </View>
     </View>
   );
 }

@@ -1,5 +1,4 @@
 module.exports = `(${String(function() {
-  const { body, head } = document;
   const timeout = setInterval(() => {
     const todays = {
       fajr: hm('fajrBegins'),
