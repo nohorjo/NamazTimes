@@ -1,23 +1,31 @@
-import * as Notifications from 'expo-notifications';
-import { AndroidNotificationPriority } from 'expo-notifications';
+import * as Notifications from "expo-notifications";
+import { AndroidNotificationPriority } from "expo-notifications";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Button, Text, ToastAndroid, Dimensions, TouchableOpacity, Picker } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WebView } from 'react-native-webview';
-import { Subscription } from '@unimodules/core';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Button,
+  Text,
+  ToastAndroid,
+  Dimensions,
+  TouchableOpacity,
+  Picker,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { WebView } from "react-native-webview";
+import { Subscription } from "@unimodules/core";
 
-import script_northend from './injected-script-northend';
-import script_central from './injected-script-central';
+import script_northend from "./injected-script-northend";
+import script_central from "./injected-script-central";
 
-import { capitalise, HourMinuteStrings, ONE_DAY, toDate, toHMS } from './utils';
+import { capitalise, HourMinuteStrings, ONE_DAY, toDate, toHMS } from "./utils";
 
-const WIDTH = Dimensions.get('window').width;
-const STORAGE_KEY = '@namaztimes:todaytomorrow';
+const WIDTH = Dimensions.get("window").width;
+const STORAGE_KEY = "@namaztimes:todaytomorrow";
 
-type NamazTimes = {[key: string]: HourMinuteStrings};
-const masjids = ['central', 'northend'] as const;
-type Masjid = typeof masjids[number];
+type NamazTimes = { [key: string]: HourMinuteStrings };
+const masjids = ["central", "northend"] as const;
+type Masjid = (typeof masjids)[number];
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -29,20 +37,23 @@ Notifications.setNotificationHandler({
 });
 
 export default function App() {
-  const [now, setNow] = useState(new Date);
+  const [now, setNow] = useState(new Date());
   const [todays, setTodays] = useState<NamazTimes>();
   const [tomorrows, setTomorrows] = useState<NamazTimes>();
   const [loaded, setLoaded] = useState(false);
   const [notificationsSet, setNotificationsSet] = useState(false);
   const [showWebView, setShowWebView] = useState(true);
-  const [masjid, setMasjid] = useState<Masjid>('northend');
+  const [masjid, setMasjid] = useState<Masjid>("northend");
 
-  const nextNamaz = todays && tomorrows && (
-    Object.entries(todays)
-      .map(([n, t]) => ([n, toDate(t)]) as [string, Date])
-      .filter(([_, t]) => t > now)[0]
-    || ['fajr', toDate(tomorrows.fajr, new Date(Date.now() + ONE_DAY))]
-  );
+  const nextNamaz =
+    todays &&
+    tomorrows &&
+    (Object.entries(todays)
+      .map(([n, t]) => [n, toDate(t)] as [string, Date])
+      .filter(([_, t]) => t > now)[0] || [
+      "fajr",
+      toDate(tomorrows.fajr, new Date(Date.now() + ONE_DAY)),
+    ]);
 
   const responseListener = useRef<Subscription>();
 
@@ -51,11 +62,16 @@ export default function App() {
 
     setTodaysAndTomorrowsNotifications(todays, tomorrows, setNotificationsSet);
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {
-      setTodaysAndTomorrowsNotifications(todays, tomorrows, setNotificationsSet);
-    });
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener(() => {
+        setTodaysAndTomorrowsNotifications(
+          todays,
+          tomorrows,
+          setNotificationsSet
+        );
+      });
 
-    const timer = setInterval(() => setNow(new Date), 1000);
+    const timer = setInterval(() => setNow(new Date()), 1000);
 
     function reset() {
       if (responseListener.current) {
@@ -68,30 +84,34 @@ export default function App() {
   }, [todays, tomorrows]);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then(data => {
+    AsyncStorage.getItem(STORAGE_KEY).then((data) => {
       if (data) {
         const { todays, tomorrows } = JSON.parse(data);
         setTodays(todays);
-        setTomorrows(tomorrows);  
+        setTomorrows(tomorrows);
       }
     });
-    AsyncStorage.getItem(STORAGE_KEY+':masjid').then(data => setMasjid(data as Masjid));
+    AsyncStorage.getItem(STORAGE_KEY + ":masjid").then((data) =>
+      setMasjid(data as Masjid)
+    );
 
-    Notifications.getAllScheduledNotificationsAsync().then(n => setNotificationsSet(!!n.length));
+    Notifications.getAllScheduledNotificationsAsync().then((n) =>
+      setNotificationsSet(!!n.length)
+    );
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(STORAGE_KEY+':masjid', masjid);
+    AsyncStorage.setItem(STORAGE_KEY + ":masjid", masjid);
   }, [masjid]);
 
   let webviewURI, script;
   switch (masjid) {
-    case 'central':
-      webviewURI = 'http://portsmouthcentralmasjid.com/Prayer-Times';
+    case "central":
+      webviewURI = "http://portsmouthcentralmasjid.com/Prayer-Times";
       script = script_central;
       break;
-    case 'northend':
-      webviewURI = 'http://neic.org.s3-website-eu-west-1.amazonaws.com';
+    case "northend":
+      webviewURI = "http://neic.org.s3-website-eu-west-1.amazonaws.com";
       script = script_northend;
       break;
   }
@@ -100,30 +120,39 @@ export default function App() {
     <View
       style={{
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
+        alignItems: "center",
+        justifyContent: "center",
         paddingVertical: 5,
-      }
-    }>
-      <TouchableOpacity onPress={() => {
-        setShowWebView(false);
-        setLoaded(false);
-        setTimeout(setShowWebView, 300, true);
-      }}>
+      }}
+    >
+      <TouchableOpacity
+        onPress={() => {
+          setShowWebView(false);
+          setLoaded(false);
+          setTimeout(setShowWebView, 300, true);
+        }}
+      >
         {nextNamaz && (
-          <Text style={{fontSize: 30, color: '#505d3e'}}>{capitalise(nextNamaz[0])} in {toHMS(nextNamaz[1].getTime() - now.getTime())}</Text>
+          <Text style={{ fontSize: 30, color: "#505d3e" }}>
+            {capitalise(nextNamaz[0])} in{" "}
+            {toHMS(nextNamaz[1].getTime() - now.getTime())}
+          </Text>
         )}
       </TouchableOpacity>
-      {loaded || todays && Object.entries(todays).map(([name, hm], i) => (                   
-        <Text key={`text${i}`}>{capitalise(name)}: {hm[0]}:{hm[1]}</Text>
-      ))}                                                                
+      {loaded ||
+        (todays &&
+          Object.entries(todays).map(([name, hm], i) => (
+            <Text key={`text${i}`}>
+              {capitalise(name)}: {hm[0]}:{hm[1]}
+            </Text>
+          )))}
       {showWebView && (
         <WebView
-          source={{uri: webviewURI}}
-          style={{width: loaded ? WIDTH : 0}}
+          source={{ uri: webviewURI }}
+          style={{ width: loaded ? WIDTH : 0 }}
           injectedJavaScript={script}
-          onMessage={e => {
-            const {todays, tomorrows} = JSON.parse(e.nativeEvent.data);
+          onMessage={(e) => {
+            const { todays, tomorrows } = JSON.parse(e.nativeEvent.data);
             setTimeout(() => {
               setTodays(todays);
               setTomorrows(tomorrows);
@@ -136,30 +165,36 @@ export default function App() {
       )}
       <View
         style={{
-          flexDirection: 'row',
-          justifyContent: 'space-evenly'
+          flexDirection: "row",
+          justifyContent: "space-evenly",
         }}
       >
         <Picker
           selectedValue={masjid}
-          style={{width: 140}}
-          onValueChange={itemValue => setMasjid(itemValue)}
+          style={{ width: 140 }}
+          onValueChange={(itemValue) => setMasjid(itemValue)}
         >
-          {masjids.map(m => (
+          {masjids.map((m) => (
             <Picker.Item label={m} value={m} />
           ))}
         </Picker>
         <Button
-          title={notificationsSet ? 'Cancel notifications' : 'Schedule notifications'}
+          title={
+            notificationsSet ? "Cancel notifications" : "Schedule notifications"
+          }
           onPress={async () => {
             if (notificationsSet) {
               await Notifications.cancelAllScheduledNotificationsAsync();
               setNotificationsSet(false);
             } else {
-              await setTodaysAndTomorrowsNotifications(todays, tomorrows, setNotificationsSet);
+              await setTodaysAndTomorrowsNotifications(
+                todays,
+                tomorrows,
+                setNotificationsSet
+              );
             }
           }}
-          color={notificationsSet ? '#5d4b3e' : '#505d3e'}
+          color={notificationsSet ? "#5d4b3e" : "#505d3e"}
         />
       </View>
     </View>
@@ -174,9 +209,9 @@ async function setTodaysAndTomorrowsNotifications(
 ): Promise<void> {
   const now = Date.now();
   if (
-    todays
-    && tomorrows
-    && (now - setTodaysAndTomorrowsNotificationsLastRun > 200)
+    todays &&
+    tomorrows &&
+    now - setTodaysAndTomorrowsNotificationsLastRun > 200
   ) {
     setTodaysAndTomorrowsNotificationsLastRun = now;
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -187,8 +222,10 @@ async function setTodaysAndTomorrowsNotifications(
         await schedulePushNotification(name, time);
       }
     });
-    await processFilteredEntries(tomorrows, ([name, hm]) => schedulePushNotification(name, toDate(hm, new Date(Date.now() + ONE_DAY))));
-    ToastAndroid.show('Notifications set', ToastAndroid.SHORT);
+    await processFilteredEntries(tomorrows, ([name, hm]) =>
+      schedulePushNotification(name, toDate(hm, new Date(Date.now() + ONE_DAY)))
+    );
+    ToastAndroid.show("Notifications set", ToastAndroid.SHORT);
     setNotificationSet(true);
   }
 
@@ -196,7 +233,11 @@ async function setTodaysAndTomorrowsNotifications(
     entries: NamazTimes,
     callback: (arg: [string, HourMinuteStrings]) => Promise<void>
   ) {
-    return Promise.all(Object.entries(entries).filter(([n]) => !n.includes('jamat')).map(callback));
+    return Promise.all(
+      Object.entries(entries)
+        .filter(([n]) => !n.includes("jamat"))
+        .map(callback)
+    );
   }
 }
 
