@@ -15,17 +15,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { WebView } from "react-native-webview";
 import { Subscription } from "@unimodules/core";
 
-import script_northend from "./injected-script-northend";
-import script_central from "./injected-script-central";
-
 import { capitalise, HourMinuteStrings, ONE_DAY, toDate, toHMS } from "./utils";
 
 const WIDTH = Dimensions.get("window").width;
-const STORAGE_KEY = "@namaztimes:todaytomorrow";
+const STORAGE_KEY_PREFIX = "@namaztimes:";
+const TIMES_STORAGE_KEY = STORAGE_KEY_PREFIX + "todaytomorrow";
+const MASJID_STORAGE_KEY = STORAGE_KEY_PREFIX + "masjid";
 
 type NamazTimes = { [key: string]: HourMinuteStrings };
-const masjids = ["central", "northend"] as const;
-type Masjid = (typeof masjids)[number];
+type Masjids = { [key: string]: { url: string; script: string }};
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -43,7 +41,8 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [notificationsSet, setNotificationsSet] = useState(false);
   const [showWebView, setShowWebView] = useState(true);
-  const [masjid, setMasjid] = useState<Masjid>("northend");
+  const [masjid, setMasjid] = useState<string>("northend");
+  const [masjids, setMasjids] = useState<Masjids>({});
 
   const nextNamaz =
     todays &&
@@ -84,15 +83,19 @@ export default function App() {
   }, [todays, tomorrows]);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((data) => {
+    fetch("http://data.muhammedhaque.co.uk/namaztimes", { headers: { Accept: "*/*", } })
+      .then(r => r.json())
+      .then(data => setMasjids(data));
+
+    AsyncStorage.getItem(TIMES_STORAGE_KEY).then((data) => {
       if (data) {
         const { todays, tomorrows } = JSON.parse(data);
         setTodays(todays);
         setTomorrows(tomorrows);
       }
     });
-    AsyncStorage.getItem(STORAGE_KEY + ":masjid").then((data) =>
-      setMasjid(data as Masjid)
+    AsyncStorage.getItem(MASJID_STORAGE_KEY).then((data) =>
+      data && setMasjid(data)
     );
 
     Notifications.getAllScheduledNotificationsAsync().then((n) =>
@@ -101,20 +104,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(STORAGE_KEY + ":masjid", masjid);
+    AsyncStorage.setItem(MASJID_STORAGE_KEY, masjid);
   }, [masjid]);
 
-  let webviewURI, script;
-  switch (masjid) {
-    case "central":
-      webviewURI = "http://portsmouthcentralmasjid.com/Prayer-Times";
-      script = script_central;
-      break;
-    case "northend":
-      webviewURI = "http://neic.org.s3-website-eu-west-1.amazonaws.com";
-      script = script_northend;
-      break;
-  }
+  const { url, script } = masjids[masjid] || {};
 
   return (
     <View
@@ -146,9 +139,9 @@ export default function App() {
               {capitalise(name)}: {hm[0]}:{hm[1]}
             </Text>
           )))}
-      {showWebView && (
+      {showWebView && url && (
         <WebView
-          source={{ uri: webviewURI }}
+          source={{ uri: url }}
           style={{ width: loaded ? WIDTH : 0 }}
           injectedJavaScript={script}
           onMessage={(e) => {
@@ -158,7 +151,7 @@ export default function App() {
               setTomorrows(tomorrows);
               setLoaded(true);
             }, 250);
-            AsyncStorage.setItem(STORAGE_KEY, e.nativeEvent.data);
+            AsyncStorage.setItem(TIMES_STORAGE_KEY, e.nativeEvent.data);
           }}
           onLoadStart={() => setLoaded(false)}
         />
@@ -174,7 +167,7 @@ export default function App() {
           style={{ width: 140 }}
           onValueChange={(itemValue) => setMasjid(itemValue)}
         >
-          {masjids.map((m) => (
+          {Object.keys(masjids).map((m) => (
             <Picker.Item label={m} value={m} />
           ))}
         </Picker>
